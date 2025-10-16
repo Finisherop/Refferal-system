@@ -21,7 +21,7 @@ const db = getDatabase(app);
 // =========================
 // 2️⃣ Telegram Bot Setup
 // =========================
-const bot = new TelegramBot("YOUR_TELEGRAM_BOT_TOKEN", { polling: true });
+const bot = new TelegramBot("8231358896:AAFz8gTpIHMsmZ1EDAR8TJL_l7AMnleVV0g", { polling: true });
 
 // =========================
 // 🌐 Bot Constants
