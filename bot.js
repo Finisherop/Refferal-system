@@ -1,109 +1,105 @@
 import express from "express";
 import TelegramBot from "node-telegram-bot-api";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, set, update } from "firebase/database";
+import { getDatabase, ref, set, get, update } from "firebase/database";
 
-const app = express();
-app.use(express.json());
-
-// ==============================
-// 🔥 1. Firebase Configuration
-// ==============================
+// =========================
+// 1️⃣ Firebase Config
+// =========================
 const firebaseConfig = {
   apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
-  authDomain: "tgfjf-9f690.firebaseapp.com",
-  databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
-  projectId: "tgfjf-9f690",
-  storageBucket: "tgfjf-9f690.appspot.com",
-  messagingSenderId: "431271375984",
-  appId: "1:431271375984:web:c206d5a8a3fd7e3286d07a",
+  authDomain: "tgfjf-5bbfe.firebaseapp.com",
+  databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com/",
+  projectId: "tgfjf-5bbfe",
+  storageBucket: "tgfjf-5bbfe.firebasestorage.app",
+  messagingSenderId: "898327972915",
+  appId: "1:898327972915:web:8450b0cfdf69134474e746",
 };
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getDatabase(firebaseApp);
 
-// ==============================
-// 🤖 2. Telegram Bot Setup
-// ==============================
-const TOKEN = "8360936389:AAEuHJF7vZp_GK1IrOvMvVKQS_DMlDi4VyI"; // ⚠️ replace this
-const WEB_APP_URL = "https://finisherop.github.io/Bot-tg/"; // ⚠️ your frontend URL
+const appFB = initializeApp(firebaseConfig);
+const db = getDatabase(appFB);
 
-const bot = new TelegramBot(TOKEN, { polling: true });
+// =========================
+// 2️⃣ Telegram Bot Setup
+// =========================
+const BOT_TOKEN = "8366558036:AAEp2ojpSnODauWLC5I5AR9pVvDd-A3ROCw";
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-// ==============================
-// 🚀 3. /start Command
-// ==============================
-bot.onText(/\/start(?:\s+(\d+))?/, async (msg, match) => {
+// =========================
+// 3️⃣ Express Setup
+// =========================
+const app = express();
+app.use(express.json());
+app.get("/", (_, res) => res.send("🤖 Telegram Referral Bot is running..."));
+
+// =========================
+// 4️⃣ /start Command — Referral Handler
+// =========================
+bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
-  const referrerId = match[1]; // If started with referral link
-  const userId = msg.from.id.toString();
   const username = msg.from.username || msg.from.first_name || "User";
 
-  const userRef = ref(db, `telegram_users/${userId}`);
-  const snapshot = await get(userRef);
+  // Extract referral ID if available
+  const query = match[1]?.trim();
+  let referrerId = null;
+  if (query) {
+    const clean = query.replace(/[\s?=]+/g, "").replace("ref", "");
+    if (clean) referrerId = clean;
+  }
 
-  if (!snapshot.exists()) {
+  const userRef = ref(db, `telegram_users/${chatId}`);
+  const snap = await get(userRef);
+
+  if (snap.exists()) {
+    // Existing user
+    await bot.sendMessage(chatId, `👋 Welcome back, ${username}!`);
+  } else {
+    // New user
     await set(userRef, {
       username,
       coins: 0,
       referrals: 0,
-      referralStatus: referrerId ? "pending" : "none",
-      referredBy: referrerId || "none",
+      referredBy: referrerId || null,
       createdAt: Date.now(),
     });
 
     if (referrerId) {
-      await bot.sendMessage(
-        chatId,
-        `🎉 Welcome, ${username}!\nYou joined via referral.\nPlease open the app below 👇`
-      );
-    } else {
-      await bot.sendMessage(chatId, `👋 Welcome, ${username}!`);
+      // Increase referrer's referral count and coins
+      const refRef = ref(db, `telegram_users/${referrerId}`);
+      const refSnap = await get(refRef);
+
+      if (refSnap.exists()) {
+        const refData = refSnap.val();
+        const newCount = (refData.referrals || 0) + 1;
+        const newCoins = (refData.coins || 0) + 500;
+
+        await update(refRef, {
+          referrals: newCount,
+          coins: newCoins,
+        });
+
+        await bot.sendMessage(
+          referrerId,
+          `🎉 New referral joined using your link!\n+1 referral, +500 coins 💰`
+        );
+      }
     }
+
+    await bot.sendMessage(
+      chatId,
+      `👋 Welcome ${username}!\n\nInvite friends and earn rewards 🎁\nHere’s your referral link 👇`
+    );
   }
 
-  const webAppUrl = `${WEB_APP_URL}?userId=${userId}`;
-  await bot.sendMessage(chatId, "👇 Open your dashboard:", {
-    reply_markup: {
-      inline_keyboard: [[{ text: "Open Dashboard", web_app: { url: webAppUrl } }]],
-    },
-  });
+  await bot.sendMessage(
+    chatId,
+    `🔗 Your referral link:\nhttps://t.me/Bdhshssbshsjj_bot?start=ref${chatId}`
+  );
 });
 
-// ==============================
-// ⚙️ 4. Confirm Referral API
-// ==============================
-app.post("/confirm-referral", async (req, res) => {
-  const { userId } = req.body;
-  if (!userId) return res.status(400).json({ error: "Missing userId" });
-
-  const userRef = ref(db, `telegram_users/${userId}`);
-  const userSnap = await get(userRef);
-
-  if (!userSnap.exists()) return res.status(404).json({ error: "User not found" });
-
-  const userData = userSnap.val();
-  if (userData.referralStatus === "confirmed" || userData.referredBy === "none")
-    return res.json({ message: "Referral already confirmed or none" });
-
-  const referrerRef = ref(db, `telegram_users/${userData.referredBy}`);
-  const referrerSnap = await get(referrerRef);
-
-  if (!referrerSnap.exists())
-    return res.status(404).json({ error: "Referrer not found" });
-
-  const referrerData = referrerSnap.val();
-
-  await update(referrerRef, {
-    coins: (referrerData.coins || 0) + 500,
-    referrals: (referrerData.referrals || 0) + 1,
-  });
-  await update(userRef, { referralStatus: "confirmed" });
-
-  res.json({ message: "Referral confirmed successfully" });
-});
-
-// ==============================
-// 🚦 5. Server Start
-// ==============================
+// =========================
+// 5️⃣ Start Server
+// =========================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+console.log("🤖 Referral bot active and polling...");
