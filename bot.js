@@ -130,7 +130,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   // Send personal referral link
   await bot.sendMessage(
     chatId,
-    `🔗 Your referral link:\nhttps://t.me/YOUR_BOT_USERNAME?start=ref${chatId}`
+    `🔗 Your referral link:\nhttps://t.me/Earnwithfun7_bot?start=ref${chatId}`
   );
 });
 
