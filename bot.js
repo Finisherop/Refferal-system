@@ -22,7 +22,7 @@ const db = getDatabase(appFB);
 // =========================
 // 2️⃣ Telegram Bot Setup
 // =========================
-const BOT_TOKEN = "8231358896:AAFz8gTpIHMsmZ1EDAR8TJL_l7AMnleVV0g";
+const BOT_TOKEN = "8425566150:AAHL68U7661v317-dwGqX_6WJiI1AtjA_p4";
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 // =========================
@@ -133,7 +133,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   // ✅ Send referral link always
   await bot.sendMessage(
     chatId,
-    `🔗 Your referral link:\nhttps://t.me/Reffeewlalbot?start=ref${chatId}`
+    `🔗 Your referral link:\nhttps://t.me/Wiwiwjwjisjs_bot?start=ref${chatId}`
   );
 });
 
