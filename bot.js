@@ -6,13 +6,13 @@ import { getDatabase, ref, set, get, update } from "firebase/database";
 // 1️⃣ Firebase Config
 // =========================
 const firebaseConfig = {
-  apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
-  authDomain: "tgfjf-5bbfe.firebaseapp.com",
-  databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
-  projectId: "tgfjf-5bbfe",
-  storageBucket: "tgfjf-5bbfe.firebasestorage.app",
-  messagingSenderId: "898327972915",
-  appId: "1:898327972915:web:8450b0cfdf69134474e746"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
 };
 
 const app = initializeApp(firebaseConfig);
@@ -21,7 +21,14 @@ const db = getDatabase(app);
 // =========================
 // 2️⃣ Telegram Bot Setup
 // =========================
-const bot = new TelegramBot("8437351423:AAEauPmc30yXlTI0TstB3m2cmy-0PGrrpXk", { polling: true });
+const bot = new TelegramBot("YOUR_TELEGRAM_BOT_TOKEN", { polling: true });
+
+// =========================
+// 🌐 Bot Constants
+// =========================
+const WEB_APP_URL = "https://telegram-earning-bot.vercel.app";
+const COMMUNITY_LINK = "https://t.me/finisher_techg";
+const BOT_USERNAME = "Reffeewlalbot";
 
 // =========================
 // 3️⃣ Helper: Write / Update Firebase
@@ -32,25 +39,46 @@ async function writeUser(userId, data) {
 }
 
 // =========================
-// 4️⃣ Command: /start?ref=xxxx
+// 4️⃣ /start Command (Referral Logic)
 // =========================
 bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const username = msg.from.username || msg.from.first_name || "Unknown";
 
-  // Extract referral ID if exists
+  // Extract ?ref=xxxxx if exists
   const query = match[1]?.trim();
   let referrerId = null;
   if (query && query.startsWith("?ref=")) {
     referrerId = query.replace("?ref=", "");
   }
 
-  // Check user existence
   const userRef = ref(db, `telegram_users/${chatId}`);
   const snap = await get(userRef);
 
+  // =========================
+  // 💬 Stylish Welcome Message
+  // =========================
+  const welcomeMessage = `
+👋 *Welcome ${username}!*
+
+🎯 Play, Earn & Refer your friends to win coins 💰  
+Start your earning journey now 👇
+`;
+
+  const options = {
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "🎮 Play Now", web_app: { url: WEB_APP_URL } },
+          { text: "👥 Join Community", url: COMMUNITY_LINK },
+        ],
+      ],
+    },
+  };
+
   if (!snap.exists()) {
-    // New user entry
+    // 🆕 New user
     await set(userRef, {
       username,
       coins: 0,
@@ -59,42 +87,50 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
       createdAt: Date.now(),
     });
 
+    // 🧩 Notify Referrer if exists
     if (referrerId) {
-      // Fetch referrer name
       const refRef = ref(db, `telegram_users/${referrerId}`);
       const refSnap = await get(refRef);
 
       if (refSnap.exists()) {
-        const refData = refSnap.val();
-        const refName = refData.username || "Someone";
+        const refName = refSnap.val().username || "Someone";
 
-        // Tell the new user who referred them
+        // Message to new user
         await bot.sendMessage(
           chatId,
-          `👤 You were referred by ${refName}! Your reward will unlock once you open the web app 🔓`
+          `🔗 You were invited by *${refName}*!  
+Open the web app to confirm your referral 🎮`,
+          { parse_mode: "Markdown" }
         );
 
-        // Tell the referrer
+        // Message to referrer
         await bot.sendMessage(
           referrerId,
-          `📩 Your referral link was used by @${username}. Reward is pending until they open the app.`
+          `⏳ @${username} joined using your referral link.  
+Referral status: *Pending...*`,
+          { parse_mode: "Markdown" }
         );
       }
-    } else {
-      bot.sendMessage(chatId, `👋 Welcome ${username}!`);
     }
+
+    // Send main welcome message
+    await bot.sendMessage(chatId, welcomeMessage, options);
   } else {
-    bot.sendMessage(chatId, "Welcome back!");
+    // 👋 Existing user
+    await bot.sendMessage(chatId, welcomeMessage, options);
   }
 
+  // Always show user’s referral link
   bot.sendMessage(
     chatId,
-    `Your referral link: https://t.me/YOUR_BOT_USERNAME?start=ref=${chatId}`
+    `🔗 *Your referral link:*  
+https://t.me/${BOT_USERNAME}?start=ref=${chatId}`,
+    { parse_mode: "Markdown" }
   );
 });
 
 // =========================
-// 5️⃣ Confirm Referral (called from Web App)
+// 5️⃣ confirmReferral() — called from WebApp
 // =========================
 export async function confirmReferral(userId) {
   const userRef = ref(db, `telegram_users/${userId}`);
@@ -114,17 +150,25 @@ export async function confirmReferral(userId) {
   const refData = refSnap.val();
   const newCoins = (refData.coins || 0) + 500;
 
+  // Update coins and confirm referral
   await update(refRef, { coins: newCoins });
   await update(userRef, { referralStatus: "confirmed" });
 
+  // Notify referrer
   bot.sendMessage(
     referrerId,
-    `🎉 Your referral reward of 500 coins has been credited!`
+    `🎉 Congratulations!  
+Your referral *@${userData.username || "User"}* just opened the web app.  
+You earned *500 coins!* 💰`,
+    { parse_mode: "Markdown" }
   );
 
+  // Notify referred user
   bot.sendMessage(
     userId,
-    `✅ Referral confirmed! You and your referrer are now connected.`
+    `✅ Referral confirmed!  
+You and your referrer are now connected.`,
+    { parse_mode: "Markdown" }
   );
 }
 
