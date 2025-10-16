@@ -1,0 +1,31 @@
+{
+  "name": "telegram-referral-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot with Firebase referral system integration",
+  "main": "bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "dependencies": {
+    "firebase": "^11.0.0",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "firebase",
+    "referral",
+    "nodejs",
+    "telegram-bot"
+  ],
+  "author": "Finisher",
+  "license": "MIT"
+}
