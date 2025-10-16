@@ -6,13 +6,13 @@ import { getDatabase, ref, set, get, update } from "firebase/database";
 // 1️⃣ Firebase Config
 // =========================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyC_SO0ZnItNVoWif48MyMeznuLsA-jq52k",
+  authDomain: "tgfjf-5bbfe.firebaseapp.com",
+  databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
+  projectId: "tgfjf-5bbfe",
+  storageBucket: "tgfjf-5bbfe.firebasestorage.app",
+  messagingSenderId: "898327972915",
+  appId: "1:898327972915:web:8450b0cfdf69134474e746"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -21,7 +21,7 @@ const db = getDatabase(app);
 // =========================
 // 2️⃣ Telegram Bot Setup
 // =========================
-const bot = new TelegramBot("YOUR_TELEGRAM_BOT_TOKEN", { polling: true });
+const bot = new TelegramBot("8484469509:AAHNw8rM2fzw35Lp1d_UTLjdFhobasHoOnM", { polling: true });
 
 // =========================
 // 3️⃣ Helper: Write / Update Firebase
