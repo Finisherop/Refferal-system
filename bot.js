@@ -13,7 +13,7 @@ const firebaseConfig = {
   projectId: "tgfjf-5bbfe",
   storageBucket: "tgfjf-5bbfe.firebasestorage.app",
   messagingSenderId: "898327972915",
-  appId: "1:898327972915:web:8450b0cfdf69134474e746"
+  appId: "1:898327972915:web:8450b0cfdf69134474e746",
 };
 
 const appFB = initializeApp(firebaseConfig);
@@ -42,7 +42,6 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   const query = match[1]?.trim();
   let referrerId = null;
   if (query) {
-    // handles: /start ref12345  or  /start?ref12345
     const clean = query.replace(/[\s?=]+/g, "").replace("ref", "");
     if (clean) referrerId = clean;
   }
@@ -53,15 +52,16 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   if (!snap.exists()) {
     // ✅ New user
     await set(userRef, {
+      userId: chatId,
       username,
       coins: 0,
+      referrals: 0,
       referredBy: referrerId || null,
       referralStatus: referrerId ? "pending" : null,
       createdAt: Date.now(),
     });
 
     if (referrerId) {
-      // handle referral
       const refRef = ref(db, `telegram_users/${referrerId}`);
       const refSnap = await get(refRef);
 
@@ -105,7 +105,6 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
       );
     }
   } else {
-    // ✅ Existing user
     await bot.sendMessage(
       chatId,
       `👋 Welcome back, ${username}!\n✨ Continue earning below 👇`,
@@ -130,7 +129,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     );
   }
 
-  // ✅ Send referral link always
+  // ✅ Always send referral link
   await bot.sendMessage(
     chatId,
     `🔗 Your referral link:\nhttps://t.me/Wiwiwjwjisjs_bot?start=ref${chatId}`
@@ -145,7 +144,8 @@ app.post("/confirm-referral", async (req, res) => {
   try {
     const userRef = ref(db, `telegram_users/${userId}`);
     const userSnap = await get(userRef);
-    if (!userSnap.exists()) return res.status(404).json({ error: "User not found" });
+    if (!userSnap.exists())
+      return res.status(404).json({ error: "User not found" });
 
     const userData = userSnap.val();
     if (userData.referralStatus !== "pending" || !userData.referredBy)
@@ -154,17 +154,21 @@ app.post("/confirm-referral", async (req, res) => {
     const referrerId = userData.referredBy;
     const refRef = ref(db, `telegram_users/${referrerId}`);
     const refSnap = await get(refRef);
-    if (!refSnap.exists()) return res.status(404).json({ error: "Referrer not found" });
+    if (!refSnap.exists())
+      return res.status(404).json({ error: "Referrer not found" });
 
     const refData = refSnap.val();
     const newCoins = (refData.coins || 0) + 500;
+    const newCount = (refData.referrals || 0) + 1;
 
-    await update(refRef, { coins: newCoins });
+    // ✅ Update both users
+    await update(refRef, { coins: newCoins, referrals: newCount });
     await update(userRef, { referralStatus: "confirmed" });
 
+    // ✅ Notify both
     await bot.sendMessage(
       referrerId,
-      `🎉 Your referral successfully joined the app!\n💰 +500 coins added to your balance.`
+      `🎉 Your referral successfully joined the app!\n💰 +500 coins added to your balance.\n👥 Total Referrals: ${newCount}`
     );
 
     await bot.sendMessage(
