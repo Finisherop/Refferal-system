@@ -21,7 +21,7 @@ const db = getDatabase(app);
 // =========================
 // 2️⃣ Telegram Bot Setup
 // =========================
-const bot = new TelegramBot("8484469509:AAHNw8rM2fzw35Lp1d_UTLjdFhobasHoOnM", { polling: true });
+const bot = new TelegramBot("8437351423:AAEauPmc30yXlTI0TstB3m2cmy-0PGrrpXk", { polling: true });
 
 // =========================
 // 3️⃣ Helper: Write / Update Firebase
