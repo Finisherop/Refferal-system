@@ -11,9 +11,9 @@ const firebaseConfig = {
   authDomain: "tgfjf-5bbfe.firebaseapp.com",
   databaseURL: "https://tgfjf-5bbfe-default-rtdb.firebaseio.com",
   projectId: "tgfjf-5bbfe",
-  storageBucket: "tgfjf-5bbfe.appspot.com", // ✅ fixed here
+  storageBucket: "tgfjf-5bbfe.firebasestorage.app",
   messagingSenderId: "898327972915",
-  appId: "1:898327972915:web:8450b0cfdf69134474e746",
+  appId: "1:898327972915:web:8450b0cfdf69134474e746"
 };
 
 const appFB = initializeApp(firebaseConfig);
@@ -26,7 +26,7 @@ const BOT_TOKEN = "8231358896:AAFz8gTpIHMsmZ1EDAR8TJL_l7AMnleVV0g";
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 // =========================
-// 3️⃣ Express App Setup (for Render port binding)
+// 3️⃣ Express App Setup
 // =========================
 const app = express();
 app.use(express.json());
@@ -38,19 +38,20 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const username = msg.from.username || msg.from.first_name || "User";
 
+  // Extract referral id properly
   const query = match[1]?.trim();
   let referrerId = null;
-  if (query && query.startsWith("?ref=")) {
-    referrerId = query.replace("?ref=", "");
+  if (query) {
+    // handles: /start ref12345  or  /start?ref12345
+    const clean = query.replace(/[\s?=]+/g, "").replace("ref", "");
+    if (clean) referrerId = clean;
   }
-
-  console.log("📩 Start command triggered:", { chatId, username, referrerId });
 
   const userRef = ref(db, `telegram_users/${chatId}`);
   const snap = await get(userRef);
 
   if (!snap.exists()) {
-    console.log("🟢 New user detected, writing to Firebase...");
+    // ✅ New user
     await set(userRef, {
       username,
       coins: 0,
@@ -58,9 +59,9 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
       referralStatus: referrerId ? "pending" : null,
       createdAt: Date.now(),
     });
-    console.log("✅ User written successfully:", chatId);
 
     if (referrerId) {
+      // handle referral
       const refRef = ref(db, `telegram_users/${referrerId}`);
       const refSnap = await get(refRef);
 
@@ -70,7 +71,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 
         await bot.sendMessage(
           chatId,
-          `👋 Welcome ${username}!\nYou were referred by ${refName}.\nYour reward will unlock once you open the app 🔓`
+          `👋 Welcome ${username}!\nYou were referred by ${refName}. Your reward will unlock once you open the app 🔓`
         );
 
         await bot.sendMessage(
@@ -78,8 +79,6 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
           `📩 Your referral link was used by @${username}.\nReward is *pending* until they open the app.`,
           { parse_mode: "Markdown" }
         );
-      } else {
-        console.warn("⚠️ Referrer not found in database:", referrerId);
       }
     } else {
       await bot.sendMessage(
@@ -90,7 +89,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
             inline_keyboard: [
               [
                 {
-                  text: "🎮 Play",
+                  text: "🎮 Open App",
                   web_app: { url: "https://telegram-earning-bot.vercel.app" },
                 },
               ],
@@ -106,16 +105,16 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
       );
     }
   } else {
-    console.log("🔁 Existing user rejoined:", chatId);
+    // ✅ Existing user
     await bot.sendMessage(
       chatId,
-      `👋 Welcome back, ${username}!\n\n✨ Glad to see you again!\n\n🎮 Continue earning below 👇`,
+      `👋 Welcome back, ${username}!\n✨ Continue earning below 👇`,
       {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: "🎮 Play",
+                text: "🎮 Open App",
                 web_app: { url: "https://telegram-earning-bot.vercel.app" },
               },
             ],
@@ -131,19 +130,18 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     );
   }
 
+  // ✅ Send referral link always
   await bot.sendMessage(
     chatId,
-    `🔗 Your referral link:\nhttps://t.me/Reffeewlalbot?start=ref=${chatId}`
+    `🔗 Your referral link:\nhttps://t.me/Reffeewlalbot?start=ref${chatId}`
   );
 });
 
 // =========================
-// 5️⃣ Referral Confirmation (Webhook/API)
+// 5️⃣ Referral Confirmation Endpoint
 // =========================
 app.post("/confirm-referral", async (req, res) => {
   const { userId } = req.body;
-  console.log("🧾 Confirm referral request:", userId);
-
   try {
     const userRef = ref(db, `telegram_users/${userId}`);
     const userSnap = await get(userRef);
@@ -174,16 +172,15 @@ app.post("/confirm-referral", async (req, res) => {
       `✅ Referral confirmed!\nYou and your referrer are now connected.`
     );
 
-    console.log("✅ Referral confirmed between:", referrerId, "and", userId);
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ Referral confirm error:", err);
+    console.error("Referral confirm error:", err);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
 // =========================
-// 6️⃣ Server Listener (for Render)
+// 6️⃣ Server Listener
 // =========================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Bot server running on port ${PORT}`));
